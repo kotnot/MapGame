@@ -1,0 +1,2610 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>MapGame - 3D Конструктор карт</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🗺️</text></svg>">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation;
+        }
+        
+        html, body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: #000;
+            color: white;
+        }
+        
+        #game-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+        
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+        
+        /* Логотип */
+        .logo {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            z-index: 101;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            pointer-events: none;
+        }
+        
+        .logo-img {
+            height: 50px;
+            width: auto;
+            filter: drop-shadow(0 0 5px rgba(255, 215, 0, 0.7));
+        }
+        
+        .logo-text {
+            font-size: 24px;
+            font-weight: bold;
+            background: linear-gradient(45deg, #ffd700, #ff6b6b);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+        }
+        
+        @media (max-width: 768px) {
+            .logo {
+                top: 10px;
+                left: 10px;
+            }
+            .logo-img {
+                height: 35px;
+            }
+            .logo-text {
+                font-size: 18px;
+            }
+        }
+        
+        /* UI элементы */
+        .ui-panel {
+            position: fixed;
+            background: rgba(20, 20, 20, 0.92);
+            border: 2px solid #444;
+            border-radius: 12px;
+            padding: 15px;
+            backdrop-filter: blur(10px);
+            z-index: 100;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5);
+        }
+        
+        /* Панель блоков внизу */
+        #block-panel {
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 95%;
+            max-width: 1000px;
+            height: auto;
+            min-height: 100px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+            padding: 10px;
+        }
+        
+        /* Кнопки инструментов (рисовать/ластик) */
+        .tool-btn {
+            width: 70px;
+            height: 70px;
+            border: 3px solid #555;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            font-weight: bold;
+            font-size: 11px;
+            user-select: none;
+            margin: 0 5px;
+            touch-action: manipulation;
+        }
+        
+        @media (max-width: 768px) {
+            .tool-btn {
+                width: 60px;
+                height: 60px;
+                font-size: 10px;
+                margin: 0 3px;
+            }
+        }
+        
+        .tool-btn:active {
+            transform: scale(0.95);
+        }
+        
+        .tool-btn.selected {
+            border: 3px solid gold;
+            box-shadow: 0 0 15px gold;
+        }
+        
+        .tool-btn#draw-btn {
+            background: rgba(46, 204, 113, 0.4);
+        }
+        
+        .tool-btn#erase-btn {
+            background: rgba(231, 76, 60, 0.4);
+        }
+        
+        .tool-icon {
+            font-size: 24px;
+            margin-bottom: 5px;
+        }
+        
+        .block-btn {
+            width: 55px;
+            height: 55px;
+            border: 2px solid #555;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            font-weight: bold;
+            font-size: 9px;
+            user-select: none;
+            touch-action: manipulation;
+        }
+        
+        @media (max-width: 768px) {
+            .block-btn {
+                width: 45px;
+                height: 45px;
+                font-size: 8px;
+            }
+        }
+        
+        .block-btn:active {
+            transform: scale(0.95);
+        }
+        
+        .block-btn.selected {
+            border: 3px solid gold;
+            box-shadow: 0 0 10px gold;
+        }
+        
+        .block-color {
+            width: 25px;
+            height: 25px;
+            border-radius: 5px;
+            margin-bottom: 3px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+        }
+        
+        @media (max-width: 768px) {
+            .block-color {
+                width: 20px;
+                height: 20px;
+            }
+        }
+        
+        /* Панель управления справа */
+        #control-panel {
+            top: 20px;
+            right: 20px;
+            width: 250px;
+        }
+        
+        @media (max-width: 768px) {
+            #control-panel {
+                width: 200px;
+                top: 10px;
+                right: 10px;
+                padding: 10px;
+            }
+        }
+        
+        .control-title {
+            text-align: center;
+            color: gold;
+            margin-bottom: 15px;
+            font-size: 18px;
+        }
+        
+        @media (max-width: 768px) {
+            .control-title {
+                font-size: 16px;
+                margin-bottom: 10px;
+            }
+        }
+        
+        .control-btn {
+            width: 100%;
+            padding: 12px;
+            margin: 6px 0;
+            background: #2c3e50;
+            border: none;
+            border-radius: 8px;
+            color: white;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: center;
+            font-weight: 600;
+            touch-action: manipulation;
+        }
+        
+        @media (max-width: 768px) {
+            .control-btn {
+                padding: 10px;
+                margin: 5px 0;
+                font-size: 13px;
+            }
+        }
+        
+        .control-btn:active {
+            transform: scale(0.98);
+        }
+        
+        .control-btn:hover {
+            background: #34495e;
+        }
+        
+        .control-btn.save { background: #27ae60; }
+        .control-btn.load { background: #e67e22; }
+        .control-btn.clear { background: #e74c3c; }
+        .control-btn.new { background: #3498db; }
+        .control-btn.mode { background: #9b59b6; }
+        .control-btn.fullscreen { background: #8e44ad; }
+        .control-btn.help { background: #1abc9c; }
+        .control-btn.site { background: #16a085; }
+        
+        /* Панель информации слева */
+        #info-panel {
+            top: 80px;
+            left: 20px;
+            width: 400px;
+        }
+        
+        @media (max-width: 768px) {
+            #info-panel {
+                width: calc(100% - 40px);
+                top: 70px;
+                left: 10px;
+                padding: 10px;
+                font-size: 12px;
+            }
+        }
+        
+        .info-text {
+            text-align: center;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+        
+        /* Панель выбранного инструмента/блока */
+        #selected-panel {
+            bottom: 140px;
+            left: 20px;
+            width: 160px;
+            height: 160px;
+            text-align: center;
+        }
+        
+        @media (max-width: 768px) {
+            #selected-panel {
+                bottom: 130px;
+                left: 10px;
+                width: 120px;
+                height: 140px;
+                padding: 10px;
+            }
+        }
+        
+        #selected-tool-display {
+            width: 70px;
+            height: 70px;
+            margin: 10px auto;
+            border: 3px solid gold;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            font-size: 32px;
+        }
+        
+        @media (max-width: 768px) {
+            #selected-tool-display {
+                width: 50px;
+                height: 50px;
+                font-size: 24px;
+            }
+        }
+        
+        #selected-tool-name {
+            font-size: 16px;
+            font-weight: bold;
+            margin-top: 5px;
+        }
+        
+        @media (max-width: 768px) {
+            #selected-tool-name {
+                font-size: 14px;
+            }
+        }
+        
+        /* Панель статистики */
+        #stats-panel {
+            bottom: 140px;
+            right: 20px;
+            width: 200px;
+            text-align: center;
+        }
+        
+        @media (max-width: 768px) {
+            #stats-panel {
+                bottom: 130px;
+                right: 10px;
+                width: 120px;
+                padding: 10px;
+            }
+        }
+        
+        #stats-text {
+            font-size: 16px;
+            font-weight: bold;
+            color: #00ff00;
+        }
+        
+        @media (max-width: 768px) {
+            #stats-text {
+                font-size: 14px;
+            }
+        }
+        
+        /* Панель сообщений */
+        #message-panel {
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            padding: 25px 50px;
+            text-align: center;
+            background: rgba(0, 0, 0, 0.9);
+            border: 3px solid gold;
+            border-radius: 15px;
+            display: none;
+            z-index: 200;
+            max-width: 90%;
+        }
+        
+        #message-text {
+            font-size: 24px;
+            color: gold;
+            text-shadow: 0 0 10px rgba(255, 215, 0, 0.7);
+        }
+        
+        @media (max-width: 768px) {
+            #message-panel {
+                padding: 20px 30px;
+            }
+            
+            #message-text {
+                font-size: 20px;
+            }
+        }
+        
+        /* Панель загрузки файлов */
+        #file-panel {
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 300px;
+            display: none;
+            z-index: 150;
+        }
+        
+        @media (max-width: 768px) {
+            #file-panel {
+                width: 90%;
+            }
+        }
+        
+        .file-input {
+            width: 100%;
+            padding: 15px;
+            margin: 10px 0;
+            background: #34495e;
+            border: 2px dashed #7f8c8d;
+            border-radius: 8px;
+            color: white;
+            text-align: center;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        
+        .file-input:hover {
+            background: #2c3e50;
+            border-color: #3498db;
+        }
+        
+        /* Панель подсказок для игры */
+        #game-hint-panel {
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 500px;
+            display: none;
+            background: rgba(0, 0, 0, 0.95);
+            border: 3px solid #00ff00;
+            z-index: 120;
+            padding: 25px;
+        }
+        
+        @media (max-width: 768px) {
+            #game-hint-panel {
+                width: 90%;
+                padding: 20px;
+            }
+        }
+        
+        .hint-title {
+            text-align: center;
+            color: #00ff00;
+            font-size: 20px;
+            margin-bottom: 15px;
+        }
+        
+        .hint-text {
+            text-align: center;
+            font-size: 14px;
+            line-height: 1.8;
+            color: #fff;
+        }
+        
+        /* Панель управления клавиатурой */
+        .key-help {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.85);
+            padding: 12px 25px;
+            border-radius: 10px;
+            text-align: center;
+            font-size: 14px;
+            border: 2px solid #555;
+            z-index: 100;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 5px;
+            max-width: 95%;
+        }
+        
+        @media (max-width: 768px) {
+            .key-help {
+                top: 60px;
+                font-size: 12px;
+                padding: 8px 15px;
+            }
+        }
+        
+        .key {
+            display: inline-block;
+            padding: 3px 10px;
+            margin: 0 2px;
+            background: #333;
+            border: 1px solid #666;
+            border-radius: 5px;
+            font-weight: bold;
+            font-family: monospace;
+        }
+        
+        /* Загрузочный экран */
+        #loading-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            z-index: 1000;
+        }
+        
+        .loading-text {
+            font-size: 28px;
+            color: white;
+            animation: pulse 1.5s infinite;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        .loading-subtext {
+            font-size: 16px;
+            color: #aaa;
+            text-align: center;
+            max-width: 80%;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 0.5; }
+            50% { opacity: 1; }
+            100% { opacity: 0.5; }
+        }
+        
+        /* Индикатор режима инструмента */
+        .tool-indicator {
+            position: fixed;
+            top: 100px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.85);
+            padding: 12px 25px;
+            border-radius: 10px;
+            font-size: 18px;
+            font-weight: bold;
+            border: 3px solid;
+            display: none;
+            z-index: 150;
+            text-align: center;
+        }
+        
+        @media (max-width: 768px) {
+            .tool-indicator {
+                top: 120px;
+                font-size: 16px;
+                padding: 10px 20px;
+            }
+        }
+        
+        #draw-indicator {
+            border-color: #2ecc71;
+            color: #2ecc71;
+            background: rgba(46, 204, 113, 0.1);
+        }
+        
+        #erase-indicator {
+            border-color: #e74c3c;
+            color: #e74c3c;
+            background: rgba(231, 76, 60, 0.1);
+        }
+        
+        /* Мобильное управление */
+        #mobile-controls {
+            position: fixed;
+            bottom: 200px;
+            left: 0;
+            width: 100%;
+            display: none;
+            z-index: 50;
+            pointer-events: none;
+        }
+        
+        .mobile-stick {
+            position: absolute;
+            width: 120px;
+            height: 120px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            backdrop-filter: blur(10px);
+            pointer-events: auto;
+            touch-action: none;
+        }
+        
+        .mobile-stick-inner {
+            position: absolute;
+            width: 60px;
+            height: 60px;
+            background: rgba(255, 255, 255, 0.5);
+            border-radius: 50%;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+        
+        #mobile-move {
+            left: 40px;
+            bottom: 40px;
+        }
+        
+        #mobile-look {
+            right: 40px;
+            bottom: 40px;
+        }
+        
+        .mobile-action-btn {
+            position: absolute;
+            width: 80px;
+            height: 80px;
+            background: rgba(52, 152, 219, 0.7);
+            border: 2px solid rgba(255, 255, 255, 0.5);
+            border-radius: 50%;
+            color: white;
+            font-size: 24px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            pointer-events: auto;
+            touch-action: manipulation;
+            user-select: none;
+        }
+        
+        .mobile-action-btn:active {
+            background: rgba(41, 128, 185, 0.7);
+            transform: scale(0.95);
+        }
+        
+        #mobile-jump {
+            right: 40px;
+            bottom: 180px;
+        }
+        
+        #mobile-action {
+            left: 40px;
+            bottom: 180px;
+            background: rgba(46, 204, 113, 0.7);
+        }
+        
+        /* Кнопка полноэкранного режима */
+        #fullscreen-btn {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            width: 50px;
+            height: 50px;
+            background: rgba(0, 0, 0, 0.7);
+            border: 2px solid #555;
+            border-radius: 50%;
+            color: white;
+            font-size: 24px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            z-index: 101;
+            transition: all 0.2s;
+        }
+        
+        #fullscreen-btn:hover {
+            background: rgba(0, 0, 0, 0.9);
+            border-color: gold;
+        }
+        
+        #fullscreen-btn:active {
+            transform: scale(0.95);
+        }
+        
+        /* Скрытие UI при полноэкранном режиме */
+        .ui-hidden .ui-panel:not(#message-panel):not(#game-hint-panel):not(#file-panel) {
+            opacity: 0.1;
+            transition: opacity 0.3s;
+        }
+        
+        .ui-hidden .ui-panel:not(#message-panel):not(#game-hint-panel):not(#file-panel):hover {
+            opacity: 1;
+        }
+        
+        /* Мобильные жесты */
+        .gesture-hint {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.8);
+            padding: 10px 20px;
+            border-radius: 10px;
+            font-size: 14px;
+            color: #aaa;
+            text-align: center;
+            z-index: 99;
+            display: none;
+        }
+        
+        /* Адаптация для очень маленьких экранов */
+        @media (max-width: 480px) {
+            #block-panel {
+                bottom: 10px;
+                gap: 4px;
+            }
+            
+            .block-btn {
+                width: 40px;
+                height: 40px;
+                font-size: 7px;
+            }
+            
+            .block-color {
+                width: 15px;
+                height: 15px;
+            }
+            
+            .mobile-stick {
+                width: 100px;
+                height: 100px;
+            }
+            
+            .mobile-action-btn {
+                width: 60px;
+                height: 60px;
+                font-size: 20px;
+            }
+            
+            #mobile-move {
+                left: 20px;
+                bottom: 20px;
+            }
+            
+            #mobile-look {
+                right: 20px;
+                bottom: 20px;
+            }
+            
+            #mobile-jump {
+                right: 20px;
+                bottom: 140px;
+            }
+            
+            #mobile-action {
+                left: 20px;
+                bottom: 140px;
+            }
+        }
+        
+        /* Портретный режим */
+        @media (max-height: 700px) {
+            #block-panel {
+                height: 90px;
+            }
+            
+            .tool-btn {
+                width: 60px;
+                height: 60px;
+            }
+            
+            .block-btn {
+                width: 40px;
+                height: 40px;
+            }
+            
+            #selected-panel, #stats-panel {
+                bottom: 110px;
+            }
+        }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+</head>
+<body>
+    <div id="loading-screen">
+        <div class="loading-text">MapGame</div>
+        <div class="loading-subtext">Загрузка 3D конструктора карт...</div>
+    </div>
+
+    <div id="game-container">
+        <!-- Логотип -->
+        <div class="logo">
+            <img src="логотип.png" alt="MapGame" class="logo-img" onerror="this.style.display='none'; this.parentElement.innerHTML='<div class=\'logo-icon\'>🗺️</div><div class=\'logo-text\'>MapGame</div>';">
+            <div class="logo-text">MapGame</div>
+        </div>
+        
+        <!-- Canvas для 3D -->
+        <canvas id="game-canvas"></canvas>
+        
+        <!-- UI элементы -->
+        <button id="fullscreen-btn" title="Полноэкранный режим (F11)">⛶</button>
+        
+        <div class="key-help">
+            <span class="key">P</span> - режим | 
+            <span class="key">D/E</span> - рисовать/ластик | 
+            <span class="key">F5/F8</span> - сохранить/загрузить |
+            <span class="key">F11</span> - полноэкранный
+        </div>
+        
+        <!-- Индикаторы режима -->
+        <div id="draw-indicator" class="tool-indicator">⚫ РЕЖИМ РИСОВАНИЯ</div>
+        <div id="erase-indicator" class="tool-indicator">🗑️ РЕЖИМ ЛАСТИКА</div>
+        
+        <!-- Панель инструментов и блоков -->
+        <div id="block-panel" class="ui-panel">
+            <!-- Кнопки инструментов -->
+            <div class="tool-btn" id="draw-btn" title="Режим рисования (D)">
+                <div class="tool-icon">⚫</div>
+                <div>РИСОВАТЬ</div>
+            </div>
+            
+            <div class="tool-btn" id="erase-btn" title="Режим ластика (E)">
+                <div class="tool-icon">🗑️</div>
+                <div>ЛАСТИК</div>
+            </div>
+            
+            <!-- Блоки будут добавлены через JS -->
+        </div>
+        
+        <!-- Панель управления -->
+        <div id="control-panel" class="ui-panel">
+            <div class="control-title">УПРАВЛЕНИЕ</div>
+            <button class="control-btn mode" id="mode-btn">Режим: КОНСТРУКТОР</button>
+            <button class="control-btn save" id="save-btn">СКАЧАТЬ КАРТУ (F5)</button>
+            <button class="control-btn load" id="load-btn">ЗАГРУЗИТЬ КАРТУ (F8)</button>
+            <button class="control-btn clear" id="clear-btn">ОЧИСТИТЬ ВСЁ</button>
+            <button class="control-btn new" id="new-btn">НОВАЯ КАРТА (N)</button>
+            <button class="control-btn fullscreen" id="fullscreen-ui-btn">ПОЛНЫЙ ЭКРАН (F11)</button>
+            <button class="control-btn site" id="site-btn">PERFECTIC SITE</button>
+            <button class="control-btn help" id="help-btn">ПОМОЩЬ (H)</button>
+        </div>
+        
+        <!-- Панель загрузки файлов -->
+        <div id="file-panel" class="ui-panel">
+            <div class="control-title">ЗАГРУЗКА КАРТЫ</div>
+            <input type="file" id="file-input" class="file-input" accept=".json,.mapgame" />
+            <button id="file-load-btn" class="control-btn">ЗАГРУЗИТЬ ВЫБРАННЫЙ ФАЙЛ</button>
+            <button id="file-cancel-btn" class="control-btn" style="background: #7f8c8d; margin-top: 5px;">ОТМЕНА</button>
+        </div>
+        
+        <!-- Панель информации -->
+        <div id="info-panel" class="ui-panel">
+            <div class="info-text">
+                ЛКМ: использовать инструмент | D: рисовать | E: ластик | Цифры 1-9: выбор блока
+            </div>
+        </div>
+        
+        <!-- Панель выбранного инструмента -->
+        <div id="selected-panel" class="ui-panel">
+            <div>ТЕКУЩИЙ ИНСТРУМЕНТ:</div>
+            <div id="selected-tool-display">⚫</div>
+            <div id="selected-tool-name">Рисование</div>
+            <div id="selected-block-info" style="font-size: 12px; margin-top: 5px; color: #aaa;"></div>
+        </div>
+        
+        <!-- Панель статистики -->
+        <div id="stats-panel" class="ui-panel">
+            <div id="stats-text">Блоков: 0</div>
+            <div id="tool-stats" style="font-size: 12px; margin-top: 5px; color: #aaa;"></div>
+        </div>
+        
+        <!-- Панель сообщений -->
+        <div id="message-panel" class="ui-panel">
+            <div id="message-text"></div>
+        </div>
+        
+        <!-- Панель подсказок для игры -->
+        <div id="game-hint-panel" class="ui-panel">
+            <div class="hint-title">=== ИГРОВОЙ РЕЖИМ ===</div>
+            <div class="hint-text">
+                WASD: движение (ENG раскладка)<br>
+                Мышь: осмотр<br>
+                Space: прыжок<br>
+                Shift: бег<br>
+                ЛКМ: поставить камень<br>
+                P: конструктор | ESC: курсор<br>
+                F11: полноэкранный режим
+            </div>
+            <button class="control-btn" onclick="document.getElementById('game-hint-panel').style.display='none'" style="margin-top: 15px;">
+                ЗАКРЫТЬ
+            </button>
+        </div>
+        
+        <!-- Мобильное управление -->
+        <div id="mobile-controls">
+            <div class="mobile-stick" id="mobile-move">
+                <div class="mobile-stick-inner"></div>
+            </div>
+            <div class="mobile-stick" id="mobile-look">
+                <div class="mobile-stick-inner"></div>
+            </div>
+            <div class="mobile-action-btn" id="mobile-jump">↑</div>
+            <div class="mobile-action-btn" id="mobile-action">⚫</div>
+        </div>
+        
+        <!-- Подсказка жестов для мобильных -->
+        <div class="gesture-hint" id="gesture-hint">
+            Два пальца для масштабирования и вращения
+        </div>
+    </div>
+
+    <script>
+        // Конфигурация игры
+        const CONFIG = {
+            MAP_SIZE: 20,
+            BLOCK_SIZE: 1,
+            RENDER_DISTANCE: 16,
+            MOUSE_SENSITIVITY: 0.002,
+            TOUCH_SENSITIVITY: 0.01,
+            PLAYER_HEIGHT: 1.8,
+            PLAYER_RADIUS: 0.3,
+            IS_MOBILE: /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+        };
+
+        // Типы блоков с цветами
+        const BLOCK_TYPES = {
+            'grass': { color: '#228B22', name: 'Трава', emoji: '🌿' },
+            'dirt': { color: '#8B4513', name: 'Земля', emoji: '🟤' },
+            'stone': { color: '#808080', name: 'Камень', emoji: '🪨' },
+            'sand': { color: '#EED6AF', name: 'Песок', emoji: '🟡' },
+            'water': { color: '#4169E1', name: 'Вода', emoji: '💧' },
+            'wood': { color: '#A0522D', name: 'Дерево', emoji: '🪵' },
+            'brick': { color: '#B22222', name: 'Кирпич', emoji: '🧱' },
+            'glass': { color: '#87CEEB', name: 'Стекло', emoji: '🔷' },
+            'gold': { color: '#FFD700', name: 'Золото', emoji: '💰' },
+            'lava': { color: '#FF4500', name: 'Лава', emoji: '🌋' }
+        };
+
+        // Режимы инструментов
+        const TOOL_MODES = {
+            DRAW: 'draw',
+            ERASE: 'erase'
+        };
+
+        // Состояние игры
+        const GameState = {
+            mode: 'build', // 'build' или 'play'
+            toolMode: TOOL_MODES.DRAW, // Текущий инструмент
+            selectedBlock: 'grass',
+            blocks: new Map(), // Хранит все блоки
+            isMouseLocked: false,
+            isFullscreen: false,
+            lastMouseTime: 0,
+            mouseCooldown: 100, // мс между кликами
+            keys: {}, // Состояние клавиш
+            player: {
+                position: { x: 1.5, y: 17, z: 1.5 }, // Спавн НАД платформой
+                rotation: { x: 0, y: 0 },
+                velocity: { x: 0, y: 0, z: 0 },
+                onGround: false
+            },
+            stats: {
+                blocksPlaced: 0,
+                blocksErased: 0
+            },
+            mobile: {
+                moveTouchId: null,
+                lookTouchId: null,
+                moveX: 0,
+                moveY: 0,
+                lookX: 0,
+                lookY: 0,
+                lastTap: 0
+            }
+        };
+
+        // Three.js переменные
+        let scene, camera, renderer, controls;
+        let raycaster, mouse;
+        let blockMeshes = new Map();
+        let previewCube = null;
+
+        // Инициализация
+        function init() {
+            // Создаем сцену
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x87CEEB);
+            
+            // Создаем камеру
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            
+            // Создаем рендерер с антиалиасингом
+            renderer = new THREE.WebGLRenderer({ 
+                canvas: document.getElementById('game-canvas'),
+                antialias: true,
+                alpha: false,
+                powerPreference: "high-performance"
+            });
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            
+            // Создаем освещение
+            const ambientLight = new THREE.AmbientLight(0x404040, 0.6);
+            scene.add(ambientLight);
+            
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            directionalLight.position.set(50, 100, 50);
+            directionalLight.castShadow = true;
+            directionalLight.shadow.mapSize.width = 1024;
+            directionalLight.shadow.mapSize.height = 1024;
+            scene.add(directionalLight);
+            
+            // Создаем небо
+            const skyGeometry = new THREE.SphereGeometry(500, 24, 24);
+            const skyMaterial = new THREE.MeshBasicMaterial({ 
+                color: 0x87CEEB, 
+                side: THREE.BackSide 
+            });
+            const sky = new THREE.Mesh(skyGeometry, skyMaterial);
+            scene.add(sky);
+            
+            // Создаем землю (для коллизий)
+            const groundGeometry = new THREE.PlaneGeometry(1000, 1000);
+            const groundMaterial = new THREE.MeshStandardMaterial({ 
+                color: 0x3a7c3a,
+                roughness: 0.8,
+                metalness: 0.2
+            });
+            const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+            ground.rotation.x = -Math.PI / 2;
+            ground.position.y = -0.5;
+            ground.receiveShadow = true;
+            scene.add(ground);
+            
+            // Инициализируем raycast и мышь
+            raycaster = new THREE.Raycaster();
+            mouse = new THREE.Vector2();
+            
+            // Создаем элементы UI
+            createBlockButtons();
+            updateToolDisplay();
+            
+            // Создаем базовую карту
+            createBaseTerrain();
+            
+            // Настройка камеры для конструктора
+            setupEditorCamera();
+            
+            // Настраиваем обработчики кнопок
+            setupButtonHandlers();
+            
+            // Устанавливаем начальный инструмент
+            setToolMode(TOOL_MODES.DRAW);
+            
+            // Настраиваем мобильное управление
+            setupMobileControls();
+            
+            // Настраиваем полноэкранный режим
+            setupFullscreen();
+            
+            // Захват клавиатуры
+            setupKeyboardCapture();
+            
+            // Скрываем экран загрузки
+            setTimeout(() => {
+                document.getElementById('loading-screen').style.display = 'none';
+                showMessage('Добро пожаловать в MapGame!', 3000);
+                
+                // Показываем подсказку для мобильных
+                if (CONFIG.IS_MOBILE) {
+                    setTimeout(() => {
+                        showMessage('Используйте виртуальные джойстики для управления', 4000);
+                    }, 3500);
+                }
+            }, 1500);
+            
+            // Запускаем игровой цикл
+            animate();
+        }
+
+        // Настройка захвата клавиатуры
+        function setupKeyboardCapture() {
+            // Предотвращаем стандартное поведение клавиш
+            const preventDefaultKeys = [
+                ' ', 'w', 'a', 's', 'd', 'shift', 'control',
+                'arrowup', 'arrowdown', 'arrowleft', 'arrowright'
+            ];
+            
+            window.addEventListener('keydown', (e) => {
+                const key = e.key.toLowerCase();
+                
+                // Предотвращаем прокрутку страницы
+                if (preventDefaultKeys.includes(key) && GameState.mode === 'play') {
+                    e.preventDefault();
+                }
+            });
+            
+            // Захватываем фокус на клик
+            document.addEventListener('click', () => {
+                if (document.activeElement !== document.body) {
+                    document.activeElement.blur();
+                }
+            });
+        }
+
+        // Настройка полноэкранного режима
+        function setupFullscreen() {
+            const fullscreenBtn = document.getElementById('fullscreen-btn');
+            const fullscreenUiBtn = document.getElementById('fullscreen-ui-btn');
+            
+            function toggleFullscreen() {
+                if (!document.fullscreenElement) {
+                    // Входим в полноэкранный режим
+                    if (document.documentElement.requestFullscreen) {
+                        document.documentElement.requestFullscreen();
+                    } else if (document.documentElement.mozRequestFullScreen) { // Firefox
+                        document.documentElement.mozRequestFullScreen();
+                    } else if (document.documentElement.webkitRequestFullscreen) { // Chrome, Safari
+                        document.documentElement.webkitRequestFullscreen();
+                    } else if (document.documentElement.msRequestFullscreen) { // IE/Edge
+                        document.documentElement.msRequestFullscreen();
+                    }
+                    GameState.isFullscreen = true;
+                    document.body.classList.add('ui-hidden');
+                } else {
+                    // Выходим из полноэкранного режима
+                    if (document.exitFullscreen) {
+                        document.exitFullscreen();
+                    } else if (document.mozCancelFullScreen) { // Firefox
+                        document.mozCancelFullScreen();
+                    } else if (document.webkitExitFullscreen) { // Chrome, Safari
+                        document.webkitExitFullscreen();
+                    } else if (document.msExitFullscreen) { // IE/Edge
+                        document.msExitFullscreen();
+                    }
+                    GameState.isFullscreen = false;
+                    document.body.classList.remove('ui-hidden');
+                }
+            }
+            
+            // Обработчики кнопок
+            fullscreenBtn.addEventListener('click', toggleFullscreen);
+            fullscreenUiBtn.addEventListener('click', toggleFullscreen);
+            
+            // Обработчик изменения полноэкранного режима
+            document.addEventListener('fullscreenchange', updateFullscreenState);
+            document.addEventListener('mozfullscreenchange', updateFullscreenState);
+            document.addEventListener('webkitfullscreenchange', updateFullscreenState);
+            document.addEventListener('msfullscreenchange', updateFullscreenState);
+            
+            // F11 для полноэкранного режима
+            window.addEventListener('keydown', (e) => {
+                if (e.key === 'F11') {
+                    e.preventDefault();
+                    toggleFullscreen();
+                }
+            });
+        }
+
+        // Обновление состояния полноэкранного режима
+        function updateFullscreenState() {
+            GameState.isFullscreen = !!(
+                document.fullscreenElement ||
+                document.mozFullScreenElement ||
+                document.webkitFullscreenElement ||
+                document.msFullscreenElement
+            );
+            
+            if (GameState.isFullscreen) {
+                document.body.classList.add('ui-hidden');
+            } else {
+                document.body.classList.remove('ui-hidden');
+            }
+            
+            // Обновляем размеры рендерера
+            onWindowResize();
+        }
+
+        // Настройка мобильного управления
+        function setupMobileControls() {
+            if (!CONFIG.IS_MOBILE) return;
+            
+            const mobileControls = document.getElementById('mobile-controls');
+            const moveStick = document.getElementById('mobile-move');
+            const lookStick = document.getElementById('mobile-look');
+            const jumpBtn = document.getElementById('mobile-jump');
+            const actionBtn = document.getElementById('mobile-action');
+            const gestureHint = document.getElementById('gesture-hint');
+            
+            // Показываем мобильное управление в игровом режиме
+            mobileControls.style.display = 'block';
+            
+            // Обработка виртуального джойстика для движения
+            setupTouchStick(moveStick, 'move');
+            
+            // Обработка виртуального джойстика для вращения
+            setupTouchStick(lookStick, 'look');
+            
+            // Кнопка прыжка
+            jumpBtn.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                GameState.keys[' '] = true;
+                jumpBtn.style.transform = 'scale(0.95)';
+                jumpBtn.style.background = 'rgba(41, 128, 185, 0.7)';
+            });
+            
+            jumpBtn.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                GameState.keys[' '] = false;
+                jumpBtn.style.transform = '';
+                jumpBtn.style.background = '';
+            });
+            
+            // Кнопка действия (поставить/удалить блок)
+            actionBtn.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                simulateMouseClick();
+                actionBtn.style.transform = 'scale(0.95)';
+                actionBtn.style.background = 'rgba(39, 174, 96, 0.7)';
+            });
+            
+            actionBtn.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                actionBtn.style.transform = '';
+                actionBtn.style.background = '';
+            });
+            
+            // Обновляем иконку кнопки действия в зависимости от режима
+            function updateActionButton() {
+                if (GameState.mode === 'play') {
+                    actionBtn.textContent = '🪨';
+                    actionBtn.title = 'Поставить камень';
+                } else if (GameState.toolMode === TOOL_MODES.DRAW) {
+                    actionBtn.textContent = BLOCK_TYPES[GameState.selectedBlock].emoji;
+                    actionBtn.title = 'Поставить блок';
+                } else {
+                    actionBtn.textContent = '🗑️';
+                    actionBtn.title = 'Удалить блок';
+                }
+            }
+            
+            // Жесты для масштабирования и вращения
+            let initialDistance = 0;
+            let initialScale = 1;
+            
+            document.addEventListener('touchstart', (e) => {
+                if (e.touches.length === 2 && GameState.mode === 'build') {
+                    initialDistance = Math.hypot(
+                        e.touches[0].clientX - e.touches[1].clientX,
+                        e.touches[0].clientY - e.touches[1].clientY
+                    );
+                    initialScale = controls ? controls.getDistance() : 10;
+                    
+                    // Показываем подсказку
+                    gestureHint.style.display = 'block';
+                    setTimeout(() => {
+                        gestureHint.style.display = 'none';
+                    }, 3000);
+                }
+            }, { passive: false });
+            
+            document.addEventListener('touchmove', (e) => {
+                if (e.touches.length === 2 && GameState.mode === 'build' && controls) {
+                    e.preventDefault();
+                    
+                    const currentDistance = Math.hypot(
+                        e.touches[0].clientX - e.touches[1].clientX,
+                        e.touches[0].clientY - e.touches[1].clientY
+                    );
+                    
+                    const scaleChange = (currentDistance - initialDistance) * 0.01;
+                    const newScale = Math.max(5, Math.min(50, initialScale - scaleChange));
+                    
+                    if (controls) {
+                        controls.minDistance = Math.max(2, newScale - 5);
+                        controls.maxDistance = Math.max(10, newScale + 5);
+                        controls.update();
+                    }
+                }
+            }, { passive: false });
+            
+            // Двойное нажатие для переключения режима
+            document.addEventListener('touchstart', (e) => {
+                if (e.touches.length === 1) {
+                    const now = Date.now();
+                    if (now - GameState.mobile.lastTap < 300) {
+                        // Двойное нажатие
+                        toggleMode();
+                        e.preventDefault();
+                    }
+                    GameState.mobile.lastTap = now;
+                }
+            }, { passive: false });
+            
+            // Обновляем кнопку действия при изменении режима
+            GameState.updateActionButton = updateActionButton;
+            updateActionButton();
+        }
+
+        // Настройка виртуального джойстика
+        function setupTouchStick(stick, type) {
+            const inner = stick.querySelector('.mobile-stick-inner');
+            let touchId = null;
+            
+            stick.addEventListener('touchstart', (e) => {
+                if (touchId !== null) return;
+                
+                const touch = e.changedTouches[0];
+                touchId = touch.identifier;
+                
+                if (type === 'move') {
+                    GameState.mobile.moveTouchId = touchId;
+                } else {
+                    GameState.mobile.lookTouchId = touchId;
+                }
+                
+                updateStickPosition(stick, inner, touch, type);
+                e.preventDefault();
+            }, { passive: false });
+            
+            stick.addEventListener('touchmove', (e) => {
+                for (let i = 0; i < e.changedTouches.length; i++) {
+                    const touch = e.changedTouches[i];
+                    if (touch.identifier === touchId) {
+                        updateStickPosition(stick, inner, touch, type);
+                        e.preventDefault();
+                        break;
+                    }
+                }
+            }, { passive: false });
+            
+            stick.addEventListener('touchend', (e) => {
+                for (let i = 0; i < e.changedTouches.length; i++) {
+                    const touch = e.changedTouches[i];
+                    if (touch.identifier === touchId) {
+                        resetStick(stick, inner, type);
+                        
+                        if (type === 'move') {
+                            GameState.mobile.moveTouchId = null;
+                            GameState.mobile.moveX = 0;
+                            GameState.mobile.moveY = 0;
+                        } else {
+                            GameState.mobile.lookTouchId = null;
+                            GameState.mobile.lookX = 0;
+                            GameState.mobile.lookY = 0;
+                        }
+                        
+                        touchId = null;
+                        e.preventDefault();
+                        break;
+                    }
+                }
+            }, { passive: false });
+        }
+
+        // Обновление позиции джойстика
+        function updateStickPosition(stick, inner, touch, type) {
+            const rect = stick.getBoundingClientRect();
+            const centerX = rect.left + rect.width / 2;
+            const centerY = rect.top + rect.height / 2;
+            
+            let deltaX = (touch.clientX - centerX) / (rect.width / 2);
+            let deltaY = (touch.clientY - centerY) / (rect.height / 2);
+            
+            // Ограничиваем внутри круга
+            const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+            if (distance > 1) {
+                deltaX /= distance;
+                deltaY /= distance;
+            }
+            
+            // Обновляем позицию внутреннего круга
+            inner.style.transform = `translate(-50%, -50%) translate(${deltaX * 30}px, ${deltaY * 30}px)`;
+            
+            // Обновляем состояние управления
+            if (type === 'move') {
+                GameState.mobile.moveX = deltaX;
+                GameState.mobile.moveY = deltaY;
+            } else {
+                GameState.mobile.lookX = deltaX;
+                GameState.mobile.lookY = deltaY;
+            }
+        }
+
+        // Сброс джойстика
+        function resetStick(stick, inner, type) {
+            inner.style.transform = 'translate(-50%, -50%)';
+            
+            if (type === 'move') {
+                GameState.mobile.moveX = 0;
+                GameState.mobile.moveY = 0;
+            } else {
+                GameState.mobile.lookX = 0;
+                GameState.mobile.lookY = 0;
+            }
+        }
+
+        // Симуляция клика мыши для мобильных
+        function simulateMouseClick() {
+            const currentTime = Date.now();
+            
+            // Проверка задержки
+            if (currentTime - GameState.lastMouseTime < GameState.mouseCooldown) {
+                return;
+            }
+            
+            GameState.lastMouseTime = currentTime;
+            
+            // Используем центр экрана для raycast
+            mouse.x = 0;
+            mouse.y = 0;
+            
+            // Обновляем raycast
+            raycaster.setFromCamera(mouse, camera);
+            
+            // Находим пересечения
+            const intersects = raycaster.intersectObjects(scene.children);
+            
+            if (intersects.length > 0) {
+                const intersect = intersects[0];
+                const point = intersect.point;
+                const normal = intersect.face.normal;
+                
+                // Режим конструктора
+                if (GameState.mode === 'build') {
+                    if (GameState.toolMode === TOOL_MODES.DRAW) {
+                        // РИСОВАНИЕ: ставим блок
+                        const newX = Math.round(point.x + normal.x * 0.5);
+                        const newY = Math.round(point.y + normal.y * 0.5);
+                        const newZ = Math.round(point.z + normal.z * 0.5);
+                        
+                        if (addBlock(newX, newY, newZ, GameState.selectedBlock)) {
+                            showMessage(`Поставлен блок: ${BLOCK_TYPES[GameState.selectedBlock].name}`, 800);
+                        }
+                        
+                    } else if (GameState.toolMode === TOOL_MODES.ERASE) {
+                        // ЛАСТИК: удаляем блок
+                        const blockX = Math.round(point.x - normal.x * 0.5);
+                        const blockY = Math.round(point.y - normal.y * 0.5);
+                        const blockZ = Math.round(point.z - normal.z * 0.5);
+                        
+                        if (removeBlock(blockX, blockY, blockZ)) {
+                            showMessage('Блок удален', 800);
+                        }
+                    }
+                }
+                // Режим игры - только ставим камень
+                else if (GameState.mode === 'play') {
+                    const newX = Math.round(point.x + normal.x * 0.5);
+                    const newY = Math.round(point.y + normal.y * 0.5);
+                    const newZ = Math.round(point.z + normal.z * 0.5);
+                    
+                    if (addBlock(newX, newY, newZ, 'stone')) {
+                        // Краткое сообщение
+                    }
+                }
+            }
+        }
+
+        // Настройка обработчиков кнопок
+        function setupButtonHandlers() {
+            document.getElementById('mode-btn').onclick = toggleMode;
+            document.getElementById('save-btn').onclick = saveAndDownloadMap;
+            document.getElementById('load-btn').onclick = showFilePanel;
+            document.getElementById('clear-btn').onclick = clearMapFunction;
+            document.getElementById('new-btn').onclick = newMap;
+            document.getElementById('help-btn').onclick = () => {
+                document.getElementById('game-hint-panel').style.display = 'block';
+            };
+            document.getElementById('site-btn').onclick = () => {
+                window.open('https://kotnot.github.io/Perfectic-inc-site', '_blank');
+                showMessage('Открыт сайт Perfectic Inc.', 2000);
+            };
+            
+            // Обработчики инструментов
+            document.getElementById('draw-btn').onclick = () => setToolMode(TOOL_MODES.DRAW);
+            document.getElementById('erase-btn').onclick = () => setToolMode(TOOL_MODES.ERASE);
+            
+            // Обработчики загрузки файлов
+            document.getElementById('file-input').addEventListener('change', handleFileSelect);
+            document.getElementById('file-load-btn').onclick = loadFromFile;
+            document.getElementById('file-cancel-btn').onclick = hideFilePanel;
+        }
+
+        // Показать панель загрузки файлов
+        function showFilePanel() {
+            document.getElementById('file-panel').style.display = 'block';
+            showMessage('Выберите файл карты для загрузки', 2000);
+        }
+
+        // Скрыть панель загрузки файлов
+        function hideFilePanel() {
+            document.getElementById('file-panel').style.display = 'none';
+            document.getElementById('file-input').value = '';
+        }
+
+        // Установка режима инструмента
+        function setToolMode(toolMode) {
+            GameState.toolMode = toolMode;
+            
+            // Обновляем UI
+            updateToolDisplay();
+            
+            // Показываем индикатор
+            showToolIndicator(toolMode);
+            
+            // Обновляем статистику инструментов
+            updateToolStats();
+            
+            // Обновляем кнопку действия на мобильных
+            if (CONFIG.IS_MOBILE && GameState.updateActionButton) {
+                GameState.updateActionButton();
+            }
+        }
+
+        // Показать индикатор инструмента
+        function showToolIndicator(toolMode) {
+            // Скрываем все индикаторы
+            document.getElementById('draw-indicator').style.display = 'none';
+            document.getElementById('erase-indicator').style.display = 'none';
+            
+            // Показываем нужный индикатор
+            if (toolMode === TOOL_MODES.DRAW) {
+                const indicator = document.getElementById('draw-indicator');
+                indicator.style.display = 'block';
+                setTimeout(() => {
+                    indicator.style.display = 'none';
+                }, 1000);
+            } else if (toolMode === TOOL_MODES.ERASE) {
+                const indicator = document.getElementById('erase-indicator');
+                indicator.style.display = 'block';
+                setTimeout(() => {
+                    indicator.style.display = 'none';
+                }, 1000);
+            }
+        }
+
+        // Создание кнопок блоков
+        function createBlockButtons() {
+            const panel = document.getElementById('block-panel');
+            const blockTypes = Object.keys(BLOCK_TYPES);
+            
+            // Очищаем панель (кроме инструментов)
+            const toolBtns = panel.querySelectorAll('.tool-btn');
+            panel.innerHTML = '';
+            toolBtns.forEach(btn => panel.appendChild(btn));
+            
+            blockTypes.forEach((blockType, index) => {
+                const btn = document.createElement('div');
+                btn.className = 'block-btn';
+                if (blockType === GameState.selectedBlock) {
+                    btn.classList.add('selected');
+                }
+                
+                btn.innerHTML = `
+                    <div class="block-color" style="background-color: ${BLOCK_TYPES[blockType].color}">
+                        ${BLOCK_TYPES[blockType].emoji}
+                    </div>
+                    <div>${CONFIG.IS_MOBILE ? blockType.substring(0, 3).toUpperCase() : blockType.toUpperCase()}</div>
+                `;
+                
+                btn.onclick = () => selectBlock(blockType);
+                btn.dataset.key = (index + 1).toString(); // Цифра для быстрого выбора
+                panel.appendChild(btn);
+            });
+        }
+
+        // Выбор блока
+        function selectBlock(blockType) {
+            GameState.selectedBlock = blockType;
+            updateToolDisplay();
+            
+            // Переключаемся в режим рисования при выборе блока
+            setToolMode(TOOL_MODES.DRAW);
+            
+            // Обновляем выделение кнопок
+            document.querySelectorAll('.block-btn').forEach(btn => {
+                btn.classList.remove('selected');
+            });
+            
+            // Находим и выделяем выбранную кнопку
+            const selectedBtn = Array.from(document.querySelectorAll('.block-btn'))
+                .find(btn => {
+                    const colorDiv = btn.querySelector('.block-color');
+                    return colorDiv.style.backgroundColor === BLOCK_TYPES[blockType].color;
+                });
+            
+            if (selectedBtn) {
+                selectedBtn.classList.add('selected');
+            }
+            
+            showMessage(`Выбран: ${BLOCK_TYPES[blockType].name}`, 1000);
+        }
+
+        // Обновление отображения инструмента
+        function updateToolDisplay() {
+            const toolDisplay = document.getElementById('selected-tool-display');
+            const toolName = document.getElementById('selected-tool-name');
+            const blockInfo = document.getElementById('selected-block-info');
+            
+            // Обновляем кнопки инструментов
+            document.getElementById('draw-btn').classList.remove('selected');
+            document.getElementById('erase-btn').classList.remove('selected');
+            
+            if (GameState.toolMode === TOOL_MODES.DRAW) {
+                toolDisplay.innerHTML = BLOCK_TYPES[GameState.selectedBlock].emoji;
+                toolDisplay.style.backgroundColor = '#2ecc71';
+                toolName.textContent = 'Рисование';
+                toolName.style.color = '#2ecc71';
+                
+                document.getElementById('draw-btn').classList.add('selected');
+                
+                // Показываем информацию о выбранном блоке
+                const block = BLOCK_TYPES[GameState.selectedBlock];
+                blockInfo.textContent = `Блок: ${block.name}`;
+                blockInfo.style.color = block.color;
+                
+            } else if (GameState.toolMode === TOOL_MODES.ERASE) {
+                toolDisplay.innerHTML = '🗑️';
+                toolDisplay.style.backgroundColor = '#e74c3c';
+                toolName.textContent = 'Ластик';
+                toolName.style.color = '#e74c3c';
+                
+                document.getElementById('erase-btn').classList.add('selected');
+                blockInfo.textContent = 'Удаляет блоки';
+                blockInfo.style.color = '#e74c3c';
+            }
+        }
+
+        // Обновление статистики инструментов
+        function updateToolStats() {
+            const toolStats = document.getElementById('tool-stats');
+            toolStats.innerHTML = `
+                Поставлено: ${GameState.stats.blocksPlaced} | 
+                Удалено: ${GameState.stats.blocksErased}
+            `;
+        }
+
+        // Создание базового ландшафта
+        function createBaseTerrain() {
+            // Очищаем старые блоки
+            clearBlocks();
+            
+            // Сбрасываем статистику
+            GameState.stats.blocksPlaced = 0;
+            GameState.stats.blocksErased = 0;
+            
+            // Создаем плоский мир
+            for (let x = 0; x < CONFIG.MAP_SIZE; x++) {
+                for (let z = 0; z < CONFIG.MAP_SIZE; z++) {
+                    // Базовая земля
+                    addBlock(x, 0, z, 'dirt');
+                    addBlock(x, 1, z, 'grass');
+                    
+                    // Холмы
+                    if (x > 5 && x < 15 && z > 5 && z < 15) {
+                        if ((x + z) % 3 === 0) {
+                            addBlock(x, 2, z, 'grass');
+                        }
+                    }
+                    
+                    // Озеро
+                    if (x >= 8 && x <= 11 && z >= 8 && z <= 11) {
+                        removeBlock(x, 1, z);
+                        addBlock(x, 0, z, 'water');
+                    }
+                    
+                    // Пляж
+                    if (x < 3 || z < 3 || x >= CONFIG.MAP_SIZE - 3 || z >= CONFIG.MAP_SIZE - 3) {
+                        removeBlock(x, 1, z);
+                        addBlock(x, 1, z, 'sand');
+                    }
+                }
+            }
+            
+            // Добавляем стартовую платформу для игрока в углу карты
+            addPlatformForPlayer();
+            
+            updateStats();
+            updateToolStats();
+            showMessage('Создана новая карта!', 2000);
+        }
+
+        // Добавление стартовой платформы для игрока
+        function addPlatformForPlayer() {
+            // Платформа 3x3 в углу карты (x=0-2, z=0-2) на высоте 15
+            const platformY = 15;
+            
+            for (let x = 0; x < 3; x++) {
+                for (let z = 0; z < 3; z++) {
+                    // Удаляем блоки если они есть
+                    removeBlock(x, platformY, z);
+                    removeBlock(x, platformY + 1, z);
+                    removeBlock(x, platformY + 2, z);
+                    
+                    // Создаем платформу из камня
+                    addBlock(x, platformY, z, 'stone');
+                }
+            }
+            
+            // Центр платформы - спавн игрока НАД платформой
+            GameState.player.position.x = 1.5;
+            GameState.player.position.y = platformY + 2; // Над платформой
+            GameState.player.position.z = 1.5;
+            GameState.player.velocity.y = 0;
+            GameState.player.onGround = false;
+        }
+
+        // Добавление блока
+        function addBlock(x, y, z, type) {
+            const key = `${x},${y},${z}`;
+            
+            // Проверка границ
+            if (x < 0 || x >= CONFIG.MAP_SIZE || z < 0 || z >= CONFIG.MAP_SIZE || y < -5 || y >= 50) {
+                return false;
+            }
+            
+            // Удаляем если уже есть
+            if (GameState.blocks.has(key)) {
+                removeBlock(x, y, z);
+            }
+            
+            // Создаем геометрию блока
+            const geometry = new THREE.BoxGeometry(CONFIG.BLOCK_SIZE, CONFIG.BLOCK_SIZE, CONFIG.BLOCK_SIZE);
+            const material = new THREE.MeshStandardMaterial({ 
+                color: BLOCK_TYPES[type].color,
+                roughness: 0.7,
+                metalness: 0.2
+            });
+            
+            const cube = new THREE.Mesh(geometry, material);
+            cube.position.set(x, y, z);
+            cube.castShadow = true;
+            cube.receiveShadow = true;
+            
+            // Добавляем на сцену и сохраняем
+            scene.add(cube);
+            GameState.blocks.set(key, { type, mesh: cube });
+            blockMeshes.set(cube.id, key);
+            
+            // Обновляем статистику
+            GameState.stats.blocksPlaced++;
+            
+            updateStats();
+            updateToolStats();
+            return true;
+        }
+
+        // Удаление блока
+        function removeBlock(x, y, z) {
+            const key = `${x},${y},${z}`;
+            
+            if (GameState.blocks.has(key)) {
+                const block = GameState.blocks.get(key);
+                scene.remove(block.mesh);
+                blockMeshes.delete(block.mesh.id);
+                GameState.blocks.delete(key);
+                
+                // Обновляем статистику
+                GameState.stats.blocksErased++;
+                
+                updateStats();
+                updateToolStats();
+                return true;
+            }
+            return false;
+        }
+
+        // Очистка всех блоков (внутренняя функция)
+        function clearBlocks() {
+            // Удаляем все блоки
+            GameState.blocks.forEach(block => {
+                scene.remove(block.mesh);
+            });
+            
+            GameState.blocks.clear();
+            blockMeshes.clear();
+            
+            // Сбрасываем статистику
+            GameState.stats.blocksPlaced = 0;
+            GameState.stats.blocksErased = 0;
+            
+            updateStats();
+            updateToolStats();
+        }
+
+        // Функция очистки карты для UI
+        function clearMapFunction() {
+            clearBlocks();
+            // Создаем новую платформу для игрока
+            addPlatformForPlayer();
+            showMessage('Вся карта очищена!', 2000);
+        }
+
+        // Новая карта
+        function newMap() {
+            createBaseTerrain();
+        }
+
+        // Обновление статистики
+        function updateStats() {
+            document.getElementById('stats-text').textContent = `Блоков: ${GameState.blocks.size}`;
+        }
+
+        // Настройка камеры редактора
+        function setupEditorCamera() {
+            camera.position.set(CONFIG.MAP_SIZE / 2, 15, -CONFIG.MAP_SIZE / 2);
+            camera.lookAt(CONFIG.MAP_SIZE / 2, 0, CONFIG.MAP_SIZE / 2);
+            
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            controls.screenSpacePanning = false;
+            controls.minDistance = 5;
+            controls.maxDistance = 50;
+            controls.maxPolarAngle = Math.PI / 2;
+            
+            // Настройка для мобильных устройств
+            if (CONFIG.IS_MOBILE) {
+                controls.rotateSpeed = 0.5;
+                controls.panSpeed = 0.5;
+                controls.enableZoom = true;
+                controls.enablePan = true;
+            }
+        }
+
+        // Переключение режима (конструктор/игра)
+        function toggleMode() {
+            if (GameState.mode === 'build') {
+                enterPlayMode();
+            } else {
+                enterBuildMode();
+            }
+        }
+
+        // Вход в игровой режим
+        function enterPlayMode() {
+            GameState.mode = 'play';
+            const modeBtn = document.getElementById('mode-btn');
+            modeBtn.textContent = 'Режим: ИГРА';
+            modeBtn.style.background = '#27ae60';
+            
+            // Скрываем UI конструктора
+            document.getElementById('block-panel').style.display = 'none';
+            document.getElementById('info-panel').style.display = 'none';
+            document.getElementById('selected-panel').style.display = 'none';
+            
+            // Показываем подсказки игры
+            document.getElementById('game-hint-panel').style.display = 'none';
+            
+            // Останавливаем controls редактора
+            if (controls) {
+                controls.enabled = false;
+            }
+            
+            // Настраиваем камеру для игрока
+            camera.position.set(
+                GameState.player.position.x,
+                GameState.player.position.y + 1.6, // Высота глаз игрока
+                GameState.player.position.z
+            );
+            
+            // Сбрасываем вращение камеры
+            camera.rotation.set(0, 0, 0);
+            GameState.player.rotation.x = 0;
+            GameState.player.rotation.y = 0;
+            
+            // Блокируем курсор (только на десктопе)
+            if (!CONFIG.IS_MOBILE) {
+                lockMouse();
+            }
+            
+            // Показываем мобильное управление
+            if (CONFIG.IS_MOBILE) {
+                document.getElementById('mobile-controls').style.display = 'block';
+                document.querySelector('.key-help').style.display = 'none';
+            }
+            
+            showMessage('Режим игры активирован!', 2000);
+        }
+
+        // Вход в режим конструктора
+        function enterBuildMode() {
+            GameState.mode = 'build';
+            const modeBtn = document.getElementById('mode-btn');
+            modeBtn.textContent = 'Режим: КОНСТРУКТОР';
+            modeBtn.style.background = '#9b59b6';
+            
+            // Показываем UI конструктора
+            document.getElementById('block-panel').style.display = 'flex';
+            document.getElementById('info-panel').style.display = 'block';
+            document.getElementById('selected-panel').style.display = 'block';
+            
+            // Скрываем подсказки игры
+            document.getElementById('game-hint-panel').style.display = 'none';
+            
+            // Включаем controls редактора
+            if (controls) {
+                controls.enabled = true;
+            }
+            
+            // Разблокируем курсор
+            unlockMouse();
+            
+            // Скрываем мобильное управление
+            if (CONFIG.IS_MOBILE) {
+                document.getElementById('mobile-controls').style.display = 'none';
+                document.querySelector('.key-help').style.display = 'flex';
+            }
+            
+            showMessage('Режим конструктора активирован!', 2000);
+        }
+
+        // Блокировка мыши
+        function lockMouse() {
+            GameState.isMouseLocked = true;
+            document.body.style.cursor = 'none';
+            document.addEventListener('mousemove', onMouseMove);
+        }
+
+        // Разблокировка мыши
+        function unlockMouse() {
+            GameState.isMouseLocked = false;
+            document.body.style.cursor = 'default';
+            document.removeEventListener('mousemove', onMouseMove);
+        }
+
+        // Движение мыши (для игрового режима)
+        function onMouseMove(event) {
+            if (!GameState.isMouseLocked || CONFIG.IS_MOBILE || GameState.mode !== 'play') return;
+            
+            const movementX = event.movementX || event.mozMovementX || event.webkitMovementX || 0;
+            const movementY = event.movementY || event.mozMovementY || event.webkitMovementY || 0;
+            
+            // Обновляем вращение игрока
+            GameState.player.rotation.y -= movementX * CONFIG.MOUSE_SENSITIVITY;
+            GameState.player.rotation.x -= movementY * CONFIG.MOUSE_SENSITIVITY;
+            
+            // Ограничиваем вертикальный поворот (не больше 90 градусов вверх/вниз)
+            GameState.player.rotation.x = Math.max(-Math.PI/2, Math.min(Math.PI/2, GameState.player.rotation.x));
+        }
+
+        // Обработка кликов мыши - ОСНОВНАЯ ФУНКЦИЯ
+        function onMouseClick(event) {
+            // Только левая кнопка мыши
+            if (event.button !== 0) return;
+            
+            const currentTime = Date.now();
+            
+            // Проверка задержки
+            if (currentTime - GameState.lastMouseTime < GameState.mouseCooldown) {
+                return;
+            }
+            
+            GameState.lastMouseTime = currentTime;
+            
+            // Получаем позицию мыши
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+            
+            // Обновляем raycast
+            raycaster.setFromCamera(mouse, camera);
+            
+            // Находим пересечения
+            const intersects = raycaster.intersectObjects(scene.children);
+            
+            if (intersects.length > 0) {
+                const intersect = intersects[0];
+                const point = intersect.point;
+                const normal = intersect.face.normal;
+                
+                // Режим конструктора
+                if (GameState.mode === 'build') {
+                    if (GameState.toolMode === TOOL_MODES.DRAW) {
+                        // РИСОВАНИЕ: ставим блок
+                        const newX = Math.round(point.x + normal.x * 0.5);
+                        const newY = Math.round(point.y + normal.y * 0.5);
+                        const newZ = Math.round(point.z + normal.z * 0.5);
+                        
+                        if (addBlock(newX, newY, newZ, GameState.selectedBlock)) {
+                            showMessage(`Поставлен блок: ${BLOCK_TYPES[GameState.selectedBlock].name}`, 500);
+                        }
+                        
+                    } else if (GameState.toolMode === TOOL_MODES.ERASE) {
+                        // ЛАСТИК: удаляем блок
+                        const blockX = Math.round(point.x - normal.x * 0.5);
+                        const blockY = Math.round(point.y - normal.y * 0.5);
+                        const blockZ = Math.round(point.z - normal.z * 0.5);
+                        
+                        if (removeBlock(blockX, blockY, blockZ)) {
+                            showMessage('Блок удален', 500);
+                        }
+                    }
+                }
+                // Режим игры - только ставим камень
+                else if (GameState.mode === 'play') {
+                    const newX = Math.round(point.x + normal.x * 0.5);
+                    const newY = Math.round(point.y + normal.y * 0.5);
+                    const newZ = Math.round(point.z + normal.z * 0.5);
+                    
+                    if (addBlock(newX, newY, newZ, 'stone')) {
+                        // Краткое сообщение
+                    }
+                }
+            }
+            
+            event.preventDefault();
+        }
+
+        // Обновление предпросмотра
+        function updatePreview() {
+            // Удаляем старый предпросмотр
+            if (previewCube) {
+                scene.remove(previewCube);
+                previewCube = null;
+            }
+            
+            // Только в режиме конструктора и рисования
+            if (GameState.mode !== 'build' || GameState.toolMode !== TOOL_MODES.DRAW) {
+                return;
+            }
+            
+            // Обновляем позицию мыши для raycast
+            mouse.x = 0;
+            mouse.y = 0;
+            
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObjects(scene.children);
+            
+            if (intersects.length > 0) {
+                const intersect = intersects[0];
+                const point = intersect.point;
+                const normal = intersect.face.normal;
+                
+                // Позиция для предпросмотра
+                const previewX = Math.round(point.x + normal.x * 0.5);
+                const previewY = Math.round(point.y + normal.y * 0.5);
+                const previewZ = Math.round(point.z + normal.z * 0.5);
+                
+                const key = `${previewX},${previewY},${previewZ}`;
+                
+                // Проверяем, можно ли поставить блок здесь
+                if (!GameState.blocks.has(key) && 
+                    previewX >= 0 && previewX < CONFIG.MAP_SIZE &&
+                    previewZ >= 0 && previewZ < CONFIG.MAP_SIZE &&
+                    previewY >= -5 && previewY < 50) {
+                    
+                    // Создаем предпросмотр (полупрозрачный блок)
+                    const geometry = new THREE.BoxGeometry(CONFIG.BLOCK_SIZE, CONFIG.BLOCK_SIZE, CONFIG.BLOCK_SIZE);
+                    const material = new THREE.MeshBasicMaterial({ 
+                        color: BLOCK_TYPES[GameState.selectedBlock].color,
+                        opacity: 0.5,
+                        transparent: true,
+                        depthWrite: false
+                    });
+                    
+                    previewCube = new THREE.Mesh(geometry, material);
+                    previewCube.position.set(previewX, previewY, previewZ);
+                    scene.add(previewCube);
+                }
+            }
+        }
+
+        // Обработка колеса мыши
+        function onMouseWheel(event) {
+            if (GameState.mode === 'build' && controls) {
+                // Регулировка скорости камеры
+                const delta = event.deltaY * 0.001;
+                controls.minDistance = Math.max(2, controls.minDistance + delta);
+                controls.maxDistance = Math.max(10, controls.maxDistance + delta);
+            }
+        }
+
+        // Обработка клавиатуры
+        function onKeyDown(event) {
+            const key = event.key.toLowerCase();
+            GameState.keys[key] = true;
+            
+            // Быстрый выбор блоков цифрами (только в конструкторе)
+            if (GameState.mode === 'build' && key >= '1' && key <= '9') {
+                const index = parseInt(key) - 1;
+                const blockTypes = Object.keys(BLOCK_TYPES);
+                if (index < blockTypes.length) {
+                    selectBlock(blockTypes[index]);
+                }
+            }
+            
+            // Переключение инструментов
+            if (key === 'd') { // D - рисовать
+                setToolMode(TOOL_MODES.DRAW);
+                event.preventDefault();
+            }
+            
+            if (key === 'e') { // E - ластик
+                setToolMode(TOOL_MODES.ERASE);
+                event.preventDefault();
+            }
+            
+            // Переключение режима (P)
+            if (key === 'p') {
+                toggleMode();
+                event.preventDefault();
+            }
+            
+            // Помощь (H)
+            if (key === 'h') {
+                document.getElementById('game-hint-panel').style.display = 'block';
+                event.preventDefault();
+            }
+            
+            // Скачать карту (F5)
+            if (event.key === 'F5') {
+                saveAndDownloadMap();
+                event.preventDefault();
+            }
+            
+            // Загрузить карту (F8)
+            if (event.key === 'F8') {
+                showFilePanel();
+                event.preventDefault();
+            }
+            
+            // Очистка (Delete)
+            if (event.key === 'Delete') {
+                clearMapFunction();
+                event.preventDefault();
+            }
+            
+            // Новая карта (N)
+            if (key === 'n') {
+                newMap();
+                event.preventDefault();
+            }
+            
+            // Выход (Ctrl+Q)
+            if (key === 'q' && (event.ctrlKey || event.metaKey)) {
+                if (confirm('Выйти из игры?')) {
+                    window.close();
+                }
+                event.preventDefault();
+            }
+            
+            // ESC в игровом режиме
+            if (event.key === 'Escape' && GameState.mode === 'play') {
+                unlockMouse();
+                event.preventDefault();
+            }
+        }
+
+        function onKeyUp(event) {
+            GameState.keys[event.key.toLowerCase()] = false;
+        }
+
+        // Проверка коллизии с блоком
+        function checkCollision(x, y, z) {
+            const key = `${Math.floor(x)},${Math.floor(y)},${Math.floor(z)}`;
+            return GameState.blocks.has(key);
+        }
+
+        // Упрощенная проверка коллизий
+        function isPositionBlocked(posX, posY, posZ) {
+            // Проверяем блоки в небольшом радиусе вокруг позиции
+            const radius = CONFIG.PLAYER_RADIUS;
+            const halfSize = 0.5;
+            
+            for (let x = Math.floor(posX - radius); x <= Math.floor(posX + radius); x++) {
+                for (let y = Math.floor(posY - radius); y <= Math.floor(posY + radius + CONFIG.PLAYER_HEIGHT); y++) {
+                    for (let z = Math.floor(posZ - radius); z <= Math.floor(posZ + radius); z++) {
+                        if (checkCollision(x, y, z)) {
+                            // Если блок находится внутри области игрока
+                            const blockMinX = x - halfSize;
+                            const blockMaxX = x + halfSize;
+                            const blockMinY = y - halfSize;
+                            const blockMaxY = y + halfSize;
+                            const blockMinZ = z - halfSize;
+                            const blockMaxZ = z + halfSize;
+                            
+                            const playerMinX = posX - radius;
+                            const playerMaxX = posX + radius;
+                            const playerMinY = posY;
+                            const playerMaxY = posY + CONFIG.PLAYER_HEIGHT;
+                            const playerMinZ = posZ - radius;
+                            const playerMaxZ = posZ + radius;
+                            
+                            // Проверяем пересечение
+                            if (playerMaxX > blockMinX && playerMinX < blockMaxX &&
+                                playerMaxY > blockMinY && playerMinY < blockMaxY &&
+                                playerMaxZ > blockMinZ && playerMinZ < blockMaxZ) {
+                                return true;
+                            }
+                        }
+                    }
+                }
+            }
+            return false;
+        }
+
+        // Движение в игровом режиме
+        function updatePlayerMovement(deltaTime) {
+            if (GameState.mode !== 'play') return;
+            
+            const speed = 5 * deltaTime;
+            const runMultiplier = GameState.keys['shift'] ? 1.5 : 1;
+            
+            // Обработка мобильного управления
+            let moveX = 0;
+            let moveZ = 0;
+            
+            if (CONFIG.IS_MOBILE) {
+                // Используем виртуальный джойстик для движения
+                moveX = GameState.mobile.moveX;
+                moveZ = GameState.mobile.moveY;
+                
+                // Используем виртуальный джойстик для вращения
+                if (GameState.mobile.lookX !== 0 || GameState.mobile.lookY !== 0) {
+                    GameState.player.rotation.y -= GameState.mobile.lookX * CONFIG.TOUCH_SENSITIVITY * 10;
+                    GameState.player.rotation.x -= GameState.mobile.lookY * CONFIG.TOUCH_SENSITIVITY * 10;
+                    
+                    // Ограничиваем вертикальный поворот
+                    GameState.player.rotation.x = Math.max(-Math.PI/2, Math.min(Math.PI/2, GameState.player.rotation.x));
+                }
+            } else {
+                // Клавиатурное управление
+                if (GameState.keys['w']) moveZ -= 1;
+                if (GameState.keys['s']) moveZ += 1;
+                if (GameState.keys['a']) moveX -= 1;
+                if (GameState.keys['d']) moveX += 1;
+                
+                // Нормализуем вектор движения
+                if (moveX !== 0 || moveZ !== 0) {
+                    const length = Math.sqrt(moveX * moveX + moveZ * moveZ);
+                    moveX /= length;
+                    moveZ /= length;
+                }
+            }
+            
+            // Обновляем вращение камеры
+            camera.rotation.order = 'YXZ';
+            camera.rotation.y = GameState.player.rotation.y;
+            camera.rotation.x = GameState.player.rotation.x;
+            
+            // Получаем направление взгляда
+            const direction = new THREE.Vector3();
+            camera.getWorldDirection(direction);
+            
+            // Горизонтальное направление (без вертикальной составляющей)
+            const horizontalDirection = new THREE.Vector3(direction.x, 0, direction.z).normalize();
+            
+            // Вектор вправо перпендикулярно направлению
+            const right = new THREE.Vector3();
+            right.crossVectors(new THREE.Vector3(0, 1, 0), horizontalDirection).normalize();
+            
+            // Вычисляем вектор движения
+            const moveVector = new THREE.Vector3();
+            moveVector.add(horizontalDirection.clone().multiplyScalar(-moveZ * speed * runMultiplier));
+            moveVector.add(right.clone().multiplyScalar(moveX * speed * runMultiplier));
+            
+            // Прыжок (Space или мобильная кнопка)
+            if ((GameState.keys[' '] || GameState.keys[' ']) && GameState.player.onGround) {
+                GameState.player.velocity.y = 7;
+                GameState.player.onGround = false;
+            }
+            
+            // Применяем гравитацию
+            GameState.player.velocity.y -= 20 * deltaTime;
+            
+            // Сохраняем текущую позицию
+            const oldX = GameState.player.position.x;
+            const oldY = GameState.player.position.y;
+            const oldZ = GameState.player.position.z;
+            
+            // Предварительная позиция
+            let newX = oldX + moveVector.x;
+            let newZ = oldZ + moveVector.z;
+            let newY = oldY + GameState.player.velocity.y * deltaTime;
+            
+            // Проверка коллизий по горизонтали
+            if (isPositionBlocked(newX, oldY, oldZ)) {
+                newX = oldX;
+            }
+            if (isPositionBlocked(oldX, oldY, newZ)) {
+                newZ = oldZ;
+            }
+            
+            // Проверка коллизий по вертикали
+            if (newY < 0) {
+                newY = 0;
+                GameState.player.velocity.y = 0;
+            }
+            
+            // Проверка земли под ногами
+            const groundCheckY = newY - 0.1;
+            if (isPositionBlocked(newX, groundCheckY, newZ)) {
+                // Стоим на земле
+                newY = Math.floor(groundCheckY) + 1.1;
+                GameState.player.velocity.y = 0;
+                GameState.player.onGround = true;
+            } else {
+                GameState.player.onGround = false;
+            }
+            
+            // Проверка столкновения с головой
+            const headCheckY = newY + CONFIG.PLAYER_HEIGHT + 0.1;
+            if (isPositionBlocked(newX, headCheckY, newZ)) {
+                newY = Math.floor(headCheckY) - CONFIG.PLAYER_HEIGHT - 0.1;
+                GameState.player.velocity.y = Math.min(GameState.player.velocity.y, 0);
+            }
+            
+            // Обновляем позицию игрока
+            GameState.player.position.x = newX;
+            GameState.player.position.y = newY;
+            GameState.player.position.z = newZ;
+            
+            // Обновляем позицию камеры (глаза игрока)
+            camera.position.set(
+                GameState.player.position.x,
+                GameState.player.position.y + 1.6, // Высота глаз от ног
+                GameState.player.position.z
+            );
+            
+            // Ограничиваем игрока в пределах карты
+            const margin = 2;
+            GameState.player.position.x = Math.max(-margin, Math.min(CONFIG.MAP_SIZE + margin, GameState.player.position.x));
+            GameState.player.position.z = Math.max(-margin, Math.min(CONFIG.MAP_SIZE + margin, GameState.player.position.z));
+        }
+
+        // Скачивание файла
+        function downloadFile(filename, content) {
+            const blob = new Blob([content], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        // Сохранение и скачивание карты
+        function saveAndDownloadMap() {
+            try {
+                const saveData = {
+                    metadata: {
+                        name: "MapGame Карта",
+                        version: "2.0",
+                        date: new Date().toISOString(),
+                        blocksCount: GameState.blocks.size,
+                        mapSize: CONFIG.MAP_SIZE,
+                        isMobile: CONFIG.IS_MOBILE
+                    },
+                    stats: GameState.stats,
+                    blocks: []
+                };
+                
+                // Собираем данные о блоках
+                GameState.blocks.forEach((block, key) => {
+                    const [x, y, z] = key.split(',').map(Number);
+                    saveData.blocks.push({ 
+                        x, y, z, 
+                        type: block.type,
+                        color: BLOCK_TYPES[block.type].color
+                    });
+                });
+                
+                // Форматируем JSON для читаемости
+                const jsonContent = JSON.stringify(saveData, null, 2);
+                
+                // Создаем имя файла с датой
+                const date = new Date();
+                const timestamp = `${date.getFullYear()}-${(date.getMonth()+1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')}_${date.getHours().toString().padStart(2, '0')}-${date.getMinutes().toString().padStart(2, '0')}`;
+                const filename = `mapgame_map_${timestamp}.mapgame`;
+                
+                // Скачиваем файл
+                downloadFile(filename, jsonContent);
+                
+                // Сохраняем также в localStorage для быстрой загрузки
+                localStorage.setItem('mapgame_last_save', jsonContent);
+                
+                showMessage(`Карта скачана: ${filename}`, 3000);
+                console.log('Карта сохранена и скачана:', saveData);
+                
+            } catch (error) {
+                showMessage('Ошибка сохранения!', 2000);
+                console.error('Ошибка сохранения:', error);
+            }
+        }
+
+        // Обработка выбора файла
+        function handleFileSelect(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const content = e.target.result;
+                    loadMapData(content);
+                } catch (error) {
+                    showMessage('Ошибка чтения файла!', 2000);
+                    console.error('Ошибка чтения файла:', error);
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        // Загрузка карты из выбранного файла
+        function loadFromFile() {
+            const fileInput = document.getElementById('file-input');
+            if (fileInput.files.length === 0) {
+                showMessage('Выберите файл сначала!', 2000);
+                return;
+            }
+            handleFileSelect({ target: { files: fileInput.files } });
+        }
+
+        // Загрузка данных карты
+        function loadMapData(content) {
+            try {
+                const saveData = JSON.parse(content);
+                
+                if (!saveData.blocks || !Array.isArray(saveData.blocks)) {
+                    showMessage('Неверный формат файла!', 2000);
+                    return;
+                }
+                
+                // Очищаем карту
+                clearBlocks();
+                
+                // Загружаем блоки
+                let loaded = 0;
+                saveData.blocks.forEach(block => {
+                    if (addBlock(block.x, block.y, block.z, block.type)) {
+                        loaded++;
+                    }
+                });
+                
+                // Восстанавливаем статистику если есть
+                if (saveData.stats) {
+                    GameState.stats = saveData.stats;
+                    updateToolStats();
+                }
+                
+                // Создаем новую платформу для игрока
+                addPlatformForPlayer();
+                
+                // Сохраняем в localStorage для быстрого доступа
+                localStorage.setItem('mapgame_last_save', JSON.stringify(saveData));
+                
+                hideFilePanel();
+                showMessage(`Загружено ${loaded} блоков из файла!`, 3000);
+                console.log('Карта загружена из файла:', saveData);
+                
+            } catch (error) {
+                showMessage('Ошибка загрузки карты!', 2000);
+                console.error('Ошибка загрузки:', error);
+            }
+        }
+
+        // Загрузка из localStorage (старая функция для совместимости)
+        function loadMap() {
+            try {
+                const saveData = JSON.parse(localStorage.getItem('mapgame_last_save'));
+                
+                if (!saveData || !saveData.blocks) {
+                    showMessage('Нет сохранений!', 2000);
+                    return;
+                }
+                
+                // Очищаем карту
+                clearBlocks();
+                
+                // Загружаем блоки
+                let loaded = 0;
+                saveData.blocks.forEach(block => {
+                    if (addBlock(block.x, block.y, block.z, block.type)) {
+                        loaded++;
+                    }
+                });
+                
+                // Восстанавливаем статистику если есть
+                if (saveData.stats) {
+                    GameState.stats = saveData.stats;
+                    updateToolStats();
+                }
+                
+                // Создаем новую платформу для игрока
+                addPlatformForPlayer();
+                
+                showMessage(`Загружено ${loaded} блоков!`, 2000);
+                console.log('Карта загружена из localStorage:', saveData);
+                
+            } catch (error) {
+                showMessage('Ошибка загрузки!', 2000);
+                console.error('Ошибка загрузки:', error);
+            }
+        }
+
+        // Показ сообщения
+        function showMessage(text, duration = 2000) {
+            const messagePanel = document.getElementById('message-panel');
+            const messageText = document.getElementById('message-text');
+            
+            messageText.textContent = text;
+            messagePanel.style.display = 'block';
+            
+            setTimeout(() => {
+                messagePanel.style.display = 'none';
+            }, duration);
+        }
+
+        // Игровой цикл
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            const deltaTime = Math.min(0.05, 0.016); // ~60 FPS, ограничиваем для стабильности
+            
+            // Обновление движения игрока
+            updatePlayerMovement(deltaTime);
+            
+            // Обновление controls редактора
+            if (controls && controls.enabled) {
+                controls.update();
+            }
+            
+            // Обновление предпросмотра
+            updatePreview();
+            
+            // Рендеринг
+            renderer.render(scene, camera);
+        }
+
+        // Обработка изменения размера окна
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            
+            // Обновляем pixel ratio для ретины дисплеев
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        }
+
+        // Инициализация при загрузке страницы
+        window.addEventListener('DOMContentLoaded', () => {
+            init();
+            
+            // Обработчики событий
+            window.addEventListener('resize', onWindowResize);
+            window.addEventListener('keydown', onKeyDown);
+            window.addEventListener('keyup', onKeyUp);
+            window.addEventListener('mousedown', onMouseClick);
+            window.addEventListener('contextmenu', (e) => e.preventDefault()); // Отключаем контекстное меню
+            window.addEventListener('wheel', onMouseWheel);
+            
+            // Предотвращаем стандартное поведение касаний
+            document.addEventListener('touchstart', (e) => {
+                if (e.target.tagName === 'CANVAS' || e.target.classList.contains('mobile-stick') || e.target.classList.contains('mobile-action-btn')) {
+                    e.preventDefault();
+                }
+            }, { passive: false });
+            
+            document.addEventListener('touchmove', (e) => {
+                if (e.target.tagName === 'CANVAS' || e.target.classList.contains('mobile-stick') || e.target.classList.contains('mobile-action-btn')) {
+                    e.preventDefault();
+                }
+            }, { passive: false });
+            
+            // Обработчик для разблокировки мыши при клике
+            if (!CONFIG.IS_MOBILE) {
+                document.addEventListener('click', () => {
+                    if (GameState.mode === 'play' && !GameState.isMouseLocked) {
+                        lockMouse();
+                    }
+                });
+            }
+        });
+
+        // Экспортируем функции для кнопок HTML
+        window.toggleMode = toggleMode;
+        window.saveAndDownloadMap = saveAndDownloadMap;
+        window.loadMap = loadMap;
+        window.clearMapFunction = clearMapFunction;
+        window.newMap = newMap;
+        window.selectBlock = selectBlock;
+        window.setToolMode = setToolMode;
+        window.showFilePanel = showFilePanel;
+    </script>
+</body>
+</html>
